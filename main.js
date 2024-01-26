@@ -1,74 +1,97 @@
-function createCharacter(name, healthId, progressBarId) {
-  const elHP = document.getElementById(healthId);
-  const elProgressBar = document.getElementById(progressBarId);
+import { Pokemon } from "./Pokemon.js";
+import { random, logAction, createClickCounter } from "./utils.js";
+import { pokemons } from "./pokemons.js";
 
-  return {
-    name,
-    defaultHP: 100,
-    damageHP: 100,
-    elHP,
-    elProgressBar,
-    isFighting: true,
-    changeHP: function (count) {
-      if (!this.isFighting) return;
+const logs = [
+  "[ПЕРСОНАЖ №1] вспомнил что-то важное, но неожиданно [ПЕРСОНАЖ №2], не помня себя от испуга, ударил в предплечье врага.",
+  "[ПЕРСОНАЖ №1] поперхнулся, и за это [ПЕРСОНАЖ №2] с испугу приложил прямой удар коленом в лоб врага.",
+  "[ПЕРСОНАЖ №1] забылся, но в это время наглый [ПЕРСОНАЖ №2], приняв волевое решение, неслышно подойдя сзади, ударил.",
+  "[ПЕРСОНАЖ №1] пришел в себя, но неожиданно [ПЕРСОНАЖ №2] случайно нанес мощнейший удар.",
+  "[ПЕРСОНАЖ №1] поперхнулся, но в это время [ПЕРСОНАЖ №2] нехотя раздробил кулаком <вырезанно цензурой> противника.",
+  "[ПЕРСОНАЖ №1] удивился, а [ПЕРСОНАЖ №2] пошатнувшись влепил подлый удар.",
+  "[ПЕРСОНАЖ №1] высморкался, но неожиданно [ПЕРСОНАЖ №2] провел дробящий удар.",
+  "[ПЕРСОНАЖ №1] пошатнулся, и внезапно наглый [ПЕРСОНАЖ №2] беспричинно ударил в ногу противника",
+  "[ПЕРСОНАЖ №1] расстроился, как вдруг, неожиданно [ПЕРСОНАЖ №2] случайно влепил стопой в живот соперника.",
+  "[ПЕРСОНАЖ №1] пытался что-то сказать, но вдруг, неожиданно [ПЕРСОНАЖ №2] со скуки, разбил бровь сопернику.",
+];
+let character, enemy;
 
-      this.damageHP = Math.max(this.damageHP - count, 0);
-      this.renderHP();
+const init = () => {
+  console.log("Start Game!");
 
-      if (this.damageHP === 0) {
-        alert(`Бедный ${this.name} проиграл бой!`);
-        this.isFighting = false;
-        Array.from(document.querySelectorAll(".button")).forEach(
-          (btn) => (btn.disabled = true)
-        );
-      }
-    },
-    renderHPLife: function () {
-      this.elHP.textContent = `${this.damageHP} / ${this.defaultHP}`;
-    },
-    renderProgressBarHP: function () {
-      this.elProgressBar.style.width = `${this.damageHP}%`;
-    },
-    renderHP: function () {
-      this.renderHPLife();
-      this.renderProgressBarHP();
-    },
+  populatePokemonSelection();
+
+  const playerPokemonSelect = document.getElementById("player-pokemon");
+  const enemyPokemonSelect = document.getElementById("enemy-pokemon");
+
+  const updatePokemons = () => {
+    const playerPokemon = pokemons.find(
+      (p) => p.name === playerPokemonSelect.value
+    );
+    const enemyPokemon = pokemons.find(
+      (p) => p.name === enemyPokemonSelect.value
+    );
+
+    character = new Pokemon({
+      ...playerPokemon,
+      healthId: "health-character",
+      progressBarId: "progressbar-character",
+    });
+    enemy = new Pokemon({
+      ...enemyPokemon,
+      healthId: "health-enemy",
+      progressBarId: "progressbar-enemy",
+    });
+
+    character.updatePokemonInfo();
+    enemy.updatePokemonInfo();
+
+    updateAttackButtons(character.attacks);
   };
-}
 
-function random(num) {
-  return Math.ceil(Math.random() * num);
-}
+  playerPokemonSelect.addEventListener("change", updatePokemons);
+  enemyPokemonSelect.addEventListener("change", updatePokemons);
 
-function init() {
-  console.log("Почни гру!");
+  updatePokemons();
+};
 
-  const Запдос = createCharacter(
-    "Запдос",
-    "health-character",
-    "progressbar-character"
-  );
-  const Бібарел = createCharacter(
-    "Бібарел",
-    "health-enemy",
-    "progressbar-enemy"
-  );
+const updateAttackButtons = (attacks) => {
+  const buttonsContainer = document.getElementById("attack-buttons");
+  buttonsContainer.innerHTML = "";
 
-  const btnKick = document.getElementById("btn-kick");
-  btnKick.addEventListener("click", () => {
-    console.log("Водная струя");
-    Запдос.changeHP(random(30));
-
+  attacks.forEach((attack) => {
+    const button = document.createElement("button");
+    button.textContent = `${attack.name} (Damage: ${attack.minDamage}-${attack.maxDamage})`;
+    button.classList.add("button");
+    button.onclick = createAttackHandler(attack);
+    buttonsContainer.appendChild(button);
   });
+};
 
-  const btnFire = document.getElementById("btn-fire");
-  btnFire.addEventListener("click", () => {
-    console.log("Грозовая волна");
-    Бібарел.changeHP(random(30));
+const createAttackHandler = (attack) => {
+  let counter = attack.maxCount;
+  return () => {
+    if (counter > 0) {
+      const damage = random(attack.minDamage, attack.maxDamage);
+      console.log(
+        `${character.name} использует ${attack.name}, нанося урон ${damage}`
+      );
+      enemy.changeHP(damage, logAction, character.name, logs);
+      counter--;
+    } else {
+      console.log(`Атака ${attack.name} больше не доступна`);
+    }
+  };
+};
+
+const populatePokemonSelection = () => {
+  const playerPokemonSelect = document.getElementById("player-pokemon");
+  const enemyPokemonSelect = document.getElementById("enemy-pokemon");
+
+  pokemons.forEach((pokemon) => {
+    playerPokemonSelect.add(new Option(pokemon.name, pokemon.name));
+    enemyPokemonSelect.add(new Option(pokemon.name, pokemon.name));
   });
-
-  Запдос.renderHP();
-  Бібарел.renderHP();
-}
+};
 
 document.addEventListener("DOMContentLoaded", init);
